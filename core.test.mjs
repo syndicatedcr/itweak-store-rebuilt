@@ -1,0 +1,13 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {demoPackages} from './catalog.mjs';
+import {escapeHTML,filterPackages,parseCatalog,serializeCatalog} from './core.mjs';
+const wrap=packages=>JSON.stringify({schemaVersion:1,packages});
+test('demo catalog survives export and import',()=>{const result=parseCatalog(serializeCatalog('Demo',demoPackages));assert.equal(result.name,'Demo');assert.equal(result.packages.length,12);assert.ok(result.packages.every(p=>p.demo));});
+test('search combines categories, saved entries, and case-insensitive text',()=>{const result=filterPackages(demoPackages,{query:'GLOW',category:'Themes',saved:new Set(['aurora'])});assert.deepEqual(result.map(p=>p.id),['aurora']);assert.equal(filterPackages(demoPackages,{saved:new Set()}).length,0);});
+test('search includes authors and empty result',()=>{assert.equal(filterPackages(demoPackages,{query:'iTweak demo catalog'}).length,12);assert.equal(filterPackages(demoPackages,{query:'nonexistent-package'}).length,0);});
+test('newest ordering is deterministic',()=>{const result=filterPackages(demoPackages,{sort:'newest'});assert.equal(result[0].added,'2026-11-12');assert.equal(result.at(-1).added,'2026-11-09');});
+test('import rejects malformed files, invalid categories, duplicate IDs, and impossible dates',()=>{assert.throws(()=>parseCatalog('{'));assert.throws(()=>parseCatalog('null'));assert.throws(()=>parseCatalog(wrap([{...demoPackages[0],category:'Other'}])));assert.throws(()=>parseCatalog(wrap([demoPackages[0],demoPackages[0]])));assert.throws(()=>parseCatalog(wrap([{...demoPackages[0],added:'2026-02-31'}])));assert.throws(()=>parseCatalog(wrap([{...demoPackages[0],id:'<script>'}])));});
+test('import rejects oversized files and executable project links',()=>{assert.throws(()=>parseCatalog('x'.repeat(1_000_001)));assert.throws(()=>parseCatalog(wrap(Array(501).fill(demoPackages[0]))));assert.throws(()=>parseCatalog(wrap([{...demoPackages[0],homepage:'javascript:alert(1)'}])));assert.throws(()=>parseCatalog(wrap([{...demoPackages[0],homepage:'http://example.com'}])));});
+test('safe HTTPS links are retained and icon classes are constrained',()=>{const result=parseCatalog(wrap([{...demoPackages[0],homepage:'https://example.com/project',icon:'" onload="bad',color:'bad'}]));assert.equal(result.packages[0].homepage,'https://example.com/project');assert.equal(result.packages[0].icon,'folder');assert.equal(result.packages[0].color,'blue');});
+test('untrusted display text is escaped',()=>{assert.equal(escapeHTML('<img src=x onerror="bad"> & \'x\''),'&lt;img src=x onerror=&quot;bad&quot;&gt; &amp; &#39;x&#39;');});

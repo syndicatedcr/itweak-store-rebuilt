@@ -1,0 +1,13 @@
+{
+  "name": "itweak-store-rebuilt",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A new, classic-iOS-inspired reconstruction of iTweak Store.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test core.test.mjs",
+    "build": "node build.mjs",
+    "start": "python3 -m http.server 4173 --bind 127.0.0.1 --directory dist"
+  }
+}
